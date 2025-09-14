@@ -180,7 +180,6 @@ Package router provides a way to group routes and apply middleware. Works with G
 - [type Group](<#Group>)
   - [func New\(mux \*http.ServeMux\) \*Group](<#New>)
   - [func RootGroup\(mux \*http.ServeMux, basePath string\) \*Group](<#RootGroup>)
-  - [func \(g \*Group\) DisableNotFoundHandler\(\)](<#Group.DisableNotFoundHandler>)
   - [func \(g \*Group\) Group\(\) \*Group](<#Group.Group>)
   - [func \(g \*Group\) Handle\(pattern string, handler http.Handler\)](<#Group.Handle>)
   - [func \(g \*Group\) HandleFiles\(pattern string, root http.FileSystem\)](<#Group.HandleFiles>)
@@ -233,15 +232,6 @@ func RootGroup(mux *http.ServeMux, basePath string) *Group
 ```
 
 Mount creates a new group with a base path.
-
-<a name="Group.DisableNotFoundHandler"></a>
-### func \(\*Group\) DisableNotFoundHandler
-
-```go
-func (g *Group) DisableNotFoundHandler()
-```
-
-DisableNotFoundHandler is a no\-op kept for API compatibility.
 
 <a name="Group.Group"></a>
 ### func \(\*Group\) Group
