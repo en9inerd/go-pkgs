@@ -94,6 +94,3 @@ func (g *Group) NotFoundHandler(handler http.HandlerFunc) {
 	}
 	g.notFound = handler
 }
-
-// DisableNotFoundHandler is a no-op kept for API compatibility.
-func (g *Group) DisableNotFoundHandler() {}

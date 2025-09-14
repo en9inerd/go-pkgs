@@ -330,12 +330,6 @@ func TestWrapGlobalAppliesRootMiddlewares(t *testing.T) {
 	}
 }
 
-func TestDisableNotFoundHandlerIsNoop(t *testing.T) {
-	mux := http.NewServeMux()
-	root := New(mux)
-	root.DisableNotFoundHandler() // should not panic or change anything
-}
-
 func TestStatusRecorder(t *testing.T) {
 	rec := &statusRecorder{}
 	if rec.Header() == nil {
