@@ -1,12 +1,11 @@
 package middleware
 
 import (
-	"log/slog"
 	"net/http"
 )
 
 // SizeLimit middleware rejects requests with bodies larger than size.
-func SizeLimit(size int64, logger *slog.Logger) func(http.Handler) http.Handler {
+func SizeLimit(size int64) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			// Check Content-Length if provided
