@@ -32,6 +32,7 @@ Package httpjson provides common helpers for JSON\-based HTTP services
 ## Index
 
 - [func DecodeJSON\[T any\]\(r \*http.Request, target \*T\) error](<#DecodeJSON>)
+- [func DecodeJSONWithLimit\[T any\]\(r \*http.Request, target \*T, maxSize int64\) error](<#DecodeJSONWithLimit>)
 - [func EncodeJSON\[T any\]\(w http.ResponseWriter, status int, v T\) error](<#EncodeJSON>)
 - [func ParseDateRange\(r \*http.Request\) \(from, to time.Time, err error\)](<#ParseDateRange>)
 - [func SendErrorJSON\(w http.ResponseWriter, r \*http.Request, l \*slog.Logger, code int, err error, msg string\)](<#SendErrorJSON>)
@@ -51,7 +52,16 @@ Package httpjson provides common helpers for JSON\-based HTTP services
 func DecodeJSON[T any](r *http.Request, target *T) error
 ```
 
-DecodeJSON decodes JSON from request body into the given struct
+DecodeJSON decodes JSON from request body into the given struct. The request body should be limited using SizeLimit middleware or http.MaxBytesReader to prevent DoS attacks via large JSON payloads.
+
+<a name="DecodeJSONWithLimit"></a>
+## func DecodeJSONWithLimit
+
+```go
+func DecodeJSONWithLimit[T any](r *http.Request, target *T, maxSize int64) error
+```
+
+DecodeJSONWithLimit decodes JSON from request body into the given struct with a size limit. This prevents DoS attacks via large JSON payloads.
 
 <a name="EncodeJSON"></a>
 ## func EncodeJSON
@@ -96,7 +106,14 @@ WriteJSON encodes and writes JSON to the response
 func WriteJSONAllowHTML(w http.ResponseWriter, r *http.Request, v any) error
 ```
 
-WriteJSONAllowHTML encodes and writes JSON with HTML characters unescaped
+WriteJSONAllowHTML encodes and writes JSON with HTML characters unescaped.
+
+SECURITY WARNING: This function does not escape HTML characters in JSON values. Only use this function if you are certain that:
+
+- The JSON will be properly escaped when rendered in HTML on the client side
+- The JSON data does not contain user\-controlled content that could lead to XSS
+
+For most use cases, use WriteJSON instead, which escapes HTML characters by default.
 
 <a name="WriteJSONBytes"></a>
 ## func WriteJSONBytes
@@ -158,7 +175,8 @@ import "github.com/en9inerd/go-pkgs/middleware"
 - [func Health\(next http.Handler\) http.Handler](<#Health>)
 - [func Logger\(logger \*slog.Logger\) func\(http.Handler\) http.Handler](<#Logger>)
 - [func RealIP\(h http.Handler\) http.Handler](<#RealIP>)
-- [func Recoverer\(logger \*slog.Logger\) func\(http.Handler\) http.Handler](<#Recoverer>)
+- [func RealIPWithTrustedProxies\(trustedProxies \[\]string, h http.Handler\) http.Handler](<#RealIPWithTrustedProxies>)
+- [func Recoverer\(logger \*slog.Logger, includeStack bool\) func\(http.Handler\) http.Handler](<#Recoverer>)
 - [func SizeLimit\(size int64\) func\(http.Handler\) http.Handler](<#SizeLimit>)
 - [func StripSlashes\(next http.Handler\) http.Handler](<#StripSlashes>)
 - [func Timeout\(timeout time.Duration\) func\(http.Handler\) http.Handler](<#Timeout>)
@@ -181,7 +199,7 @@ GlobalThrottle returns a middleware that limits the total number of in\-flight r
 func Headers(headers ...string) func(http.Handler) http.Handler
 ```
 
-Headers middleware adds headers to response
+Headers middleware adds headers to response. Header values are sanitized to prevent HTTP header injection attacks.
 
 <a name="Health"></a>
 ## func Health
@@ -210,16 +228,45 @@ func RealIP(h http.Handler) http.Handler
 
 RealIP is a middleware that sets a http.Request's RemoteAddr to the results of parsing either the X\-Forwarded\-For or X\-Real\-IP headers.
 
-This middleware should only be used if user can trust the headers sent with request. If reverse proxies are configured to pass along arbitrary header values from the client, or if this middleware used without a reverse proxy, malicious clients could set anything as X\-Forwarded\-For header and attack the server in various ways.
+This middleware should only be used if you can trust the headers sent with the request. If reverse proxies are configured to pass along arbitrary header values from the client, or if this middleware is used without a reverse proxy, malicious clients could set anything as X\-Forwarded\-For header and attack the server in various ways.
+
+For a secure version that validates proxy IPs, use RealIPWithTrustedProxies.
+
+<a name="RealIPWithTrustedProxies"></a>
+## func RealIPWithTrustedProxies
+
+```go
+func RealIPWithTrustedProxies(trustedProxies []string, h http.Handler) http.Handler
+```
+
+RealIPWithTrustedProxies is a secure version of RealIP that only trusts X\-Forwarded\-For and X\-Real\-IP headers when the request comes from a trusted proxy. This prevents IP spoofing attacks by validating that the RemoteAddr is from a trusted source.
+
+trustedProxies can be:
+
+- nil or empty: Only trust headers if RemoteAddr is a private IP \(assumes behind reverse proxy\). This default behavior is safe if:
+- Your server is always behind a reverse proxy, AND
+- Direct client connections from private networks are not possible.
+- List of CIDR blocks: Only trust headers if RemoteAddr matches one of the CIDRs
+- List of IP addresses: Only trust headers if RemoteAddr matches one of the IPs
+
+Example usage:
+
+```
+// Explicit trusted proxies (most secure)
+middleware.RealIPWithTrustedProxies([]string{"10.0.0.1", "10.0.0.2"}, handler)
+
+// Trust all private IPs (safe if behind reverse proxy)
+middleware.RealIPWithTrustedProxies(nil, handler)
+```
 
 <a name="Recoverer"></a>
 ## func Recoverer
 
 ```go
-func Recoverer(logger *slog.Logger) func(http.Handler) http.Handler
+func Recoverer(logger *slog.Logger, includeStack bool) func(http.Handler) http.Handler
 ```
 
-Recoverer is a middleware that recovers from panics, logs the panic and returns a HTTP 500 status if possible.
+Recoverer is a middleware that recovers from panics, logs the panic and returns a HTTP 500 status if possible. If includeStack is true, full stack traces are logged. In production, set includeStack to false to prevent information disclosure if logs are exposed.
 
 <a name="SizeLimit"></a>
 ## func SizeLimit
@@ -268,6 +315,7 @@ import "github.com/en9inerd/go-pkgs/realip"
 ## Index
 
 - [func Get\(r \*http.Request\) \(string, error\)](<#Get>)
+- [func IsPrivateIP\(ip net.IP\) bool](<#IsPrivateIP>)
 
 
 <a name="Get"></a>
@@ -278,6 +326,15 @@ func Get(r *http.Request) (string, error)
 ```
 
 Get extracts the "real" client IP from the request. It prefers the first public IP found scanning headers right\-to\-left, falls back to the first valid IP seen in headers, then to RemoteAddr.
+
+<a name="IsPrivateIP"></a>
+## func IsPrivateIP
+
+```go
+func IsPrivateIP(ip net.IP) bool
+```
+
+IsPrivateIP returns true if the IP address is in a private subnet. This is useful for validating that a request came from a trusted proxy.
 
 # router
 
