@@ -18,7 +18,7 @@ func WriteJSON(w http.ResponseWriter, data any) {
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(true)
 	if err := enc.Encode(data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -34,7 +34,14 @@ func WriteJSONBytes(w http.ResponseWriter, r *http.Request, data []byte) error {
 	return nil
 }
 
-// WriteJSONAllowHTML encodes and writes JSON with HTML characters unescaped
+// WriteJSONAllowHTML encodes and writes JSON with HTML characters unescaped.
+//
+// SECURITY WARNING: This function does not escape HTML characters in JSON values.
+// Only use this function if you are certain that:
+//   - The JSON will be properly escaped when rendered in HTML on the client side
+//   - The JSON data does not contain user-controlled content that could lead to XSS
+//
+// For most use cases, use WriteJSON instead, which escapes HTML characters by default.
 func WriteJSONAllowHTML(w http.ResponseWriter, r *http.Request, v any) error {
 	encode := func(v any) ([]byte, error) {
 		buf := &bytes.Buffer{}
@@ -59,7 +66,7 @@ func writeJSONWithStatus(w http.ResponseWriter, data any, code int) {
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(true)
 	if err := enc.Encode(data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -96,9 +103,21 @@ func ParseDateRange(r *http.Request) (from, to time.Time, err error) {
 	return from, to, nil
 }
 
-// DecodeJSON decodes JSON from request body into the given struct
+// DecodeJSON decodes JSON from request body into the given struct.
+// The request body should be limited using SizeLimit middleware or http.MaxBytesReader
+// to prevent DoS attacks via large JSON payloads.
 func DecodeJSON[T any](r *http.Request, target *T) error {
 	if err := json.NewDecoder(r.Body).Decode(&target); err != nil {
+		return fmt.Errorf("decode json: %w", err)
+	}
+	return nil
+}
+
+// DecodeJSONWithLimit decodes JSON from request body into the given struct with a size limit.
+// This prevents DoS attacks via large JSON payloads.
+func DecodeJSONWithLimit[T any](r *http.Request, target *T, maxSize int64) error {
+	limitedBody := http.MaxBytesReader(nil, r.Body, maxSize)
+	if err := json.NewDecoder(limitedBody).Decode(&target); err != nil {
 		return fmt.Errorf("decode json: %w", err)
 	}
 	return nil

@@ -5,7 +5,8 @@ import (
 	"strings"
 )
 
-// Headers middleware adds headers to response
+// Headers middleware adds headers to response.
+// Header values are sanitized to prevent HTTP header injection attacks.
 func Headers(headers ...string) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
@@ -14,7 +15,13 @@ func Headers(headers ...string) func(http.Handler) http.Handler {
 				if len(elems) != 2 {
 					continue
 				}
-				w.Header().Set(strings.TrimSpace(elems[0]), strings.TrimSpace(elems[1]))
+				key := strings.TrimSpace(elems[0])
+				value := strings.TrimSpace(elems[1])
+
+				if strings.ContainsAny(value, "\r\n") {
+					continue
+				}
+				w.Header().Set(key, value)
 			}
 			h.ServeHTTP(w, r)
 		}

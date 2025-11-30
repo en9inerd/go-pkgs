@@ -98,3 +98,9 @@ func isPrivateSubnet(ip net.IP) bool {
 	}
 	return false
 }
+
+// IsPrivateIP returns true if the IP address is in a private subnet.
+// This is useful for validating that a request came from a trusted proxy.
+func IsPrivateIP(ip net.IP) bool {
+	return isPrivateSubnet(ip)
+}
