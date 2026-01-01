@@ -65,14 +65,12 @@ func (tb *TokenBucket) Wait(ctx context.Context) error {
 			return nil
 		}
 
-		// Calculate wait time
 		tb.mu.Lock()
 		tb.refill()
 		needed := 1.0 - tb.tokens
 		waitTime := time.Duration(needed/tb.refillRate) * time.Second
 		tb.mu.Unlock()
 
-		// Wait with context cancellation
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -108,9 +106,8 @@ func (fw *FixedWindow) Allow() bool {
 	defer fw.mu.Unlock()
 
 	now := time.Now()
-	if now.Sub(fw.windowStart) >= fw.window {
-		// Reset window
-		fw.count = 0
+		if now.Sub(fw.windowStart) >= fw.window {
+			fw.count = 0
 		fw.windowStart = now
 	}
 
@@ -128,7 +125,6 @@ func (fw *FixedWindow) Wait(ctx context.Context) error {
 			return nil
 		}
 
-		// Calculate wait time until next window
 		fw.mu.Lock()
 		now := time.Now()
 		elapsed := now.Sub(fw.windowStart)
@@ -139,7 +135,6 @@ func (fw *FixedWindow) Wait(ctx context.Context) error {
 			continue
 		}
 
-		// Wait with context cancellation
 		select {
 		case <-ctx.Done():
 			return ctx.Err()

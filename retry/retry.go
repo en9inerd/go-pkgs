@@ -45,14 +45,12 @@ func Do(ctx context.Context, strategy *Strategy, fn func() error) error {
 	delay := strategy.InitialDelay
 
 	for attempt := 0; attempt < strategy.MaxAttempts; attempt++ {
-		// Check context cancellation
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
 		}
 
-		// Execute the function
 		err := fn()
 		if err == nil {
 			return nil
@@ -105,14 +103,12 @@ func DoWithResult[T any](ctx context.Context, strategy *Strategy, fn func() (T, 
 	delay := strategy.InitialDelay
 
 	for attempt := 0; attempt < strategy.MaxAttempts; attempt++ {
-		// Check context cancellation
 		select {
 		case <-ctx.Done():
 			return zero, ctx.Err()
 		default:
 		}
 
-		// Execute the function
 		result, err := fn()
 		if err == nil {
 			return result, nil
@@ -120,16 +116,13 @@ func DoWithResult[T any](ctx context.Context, strategy *Strategy, fn func() (T, 
 
 		lastErr = err
 
-		// Check if error is retryable
 		if !strategy.RetryableErrors(err) {
 			return zero, err
 		}
 
-		// Don't sleep after the last attempt
 		if attempt < strategy.MaxAttempts-1 {
 			calculatedDelay := calculateDelay(delay, strategy)
 
-			// Wait with context cancellation support
 			select {
 			case <-ctx.Done():
 				return zero, ctx.Err()
@@ -159,11 +152,9 @@ func IsRetryableError(err error) bool {
 		return false
 	}
 
-	// Check for context cancellation/timeout
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return false
 	}
 
-	// Default: retry all errors
 	return true
 }

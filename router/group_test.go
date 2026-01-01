@@ -23,13 +23,9 @@ func TestMiddlewareOrderAndHandlerExecution(t *testing.T) {
 	mux := http.NewServeMux()
 	root := New(mux)
 
-	// root middleware should execute outermost
 	root.Use(writeBeforeMiddleware("root;"))
 
-	// create child group with its own middleware
 	child := root.With(writeBeforeMiddleware("child;"))
-
-	// register child handler via child group
 	child.HandleFunc("/a", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("handler;"))
 	}))
@@ -68,7 +64,6 @@ func TestHandleFilesServesFilesUnderPrefix(t *testing.T) {
 	mux := http.NewServeMux()
 	root := New(mux)
 
-	// create temp dir and a file
 	dir := t.TempDir()
 	filename := "foo.txt"
 	content := "file-content"
@@ -208,7 +203,6 @@ func TestHandlerReturnsMuxHandlerAndPattern(t *testing.T) {
 	g := New(mux)
 	g.HandleFunc("/h", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("ok")) })
 
-	// create request for /h
 	req := httptest.NewRequest(http.MethodGet, "/h", nil)
 	h, pat := g.Handler(req)
 	if h == nil {
@@ -217,7 +211,6 @@ func TestHandlerReturnsMuxHandlerAndPattern(t *testing.T) {
 	if pat == "" {
 		t.Fatalf("expected non-empty pattern, got empty")
 	}
-	// ensure the handler works when invoked
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if strings.TrimSpace(rec.Body.String()) != "ok" {
@@ -226,7 +219,6 @@ func TestHandlerReturnsMuxHandlerAndPattern(t *testing.T) {
 }
 
 func TestRouteConfigAndRouteMethod(t *testing.T) {
-	// ensure Route(configureFn) actually calls the provided function
 	mux := http.NewServeMux()
 	g := New(mux)
 

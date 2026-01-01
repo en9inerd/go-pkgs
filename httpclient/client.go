@@ -109,7 +109,6 @@ func (c *Client) buildURL(path string) string {
 	if path == "" {
 		return c.baseURL
 	}
-	// Join baseURL and path, handling trailing/leading slashes
 	if c.baseURL[len(c.baseURL)-1] == '/' && path[0] == '/' {
 		return c.baseURL + path[1:]
 	}
