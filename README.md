@@ -669,6 +669,394 @@ func (e *Logger) Respond(w http.ResponseWriter, r *http.Request, httpCode int, e
 
 Respond logs the error and sends a JSON error response
 
+# longpoll
+
+```go
+import "github.com/en9inerd/go-pkgs/longpoll"
+```
+
+Package longpoll provides a generic client for long polling HTTP requests.
+
+Long polling is a technique where the client makes a request to the server, and the server holds the request open until it has data to send or a timeout occurs. Once the server responds, the client immediately makes another request to continue receiving updates.
+
+This package is designed to work with various long polling APIs, including: \- Telegram Bot API getUpdates \- Custom long polling endpoints \- Server\-sent events alternatives
+
+Key features: \- Dynamic URL updates \(e.g., for offset parameters like Telegram Bot API\) \- Support for both GET and POST requests \- Automatic retry with configurable backoff \- Context cancellation support \- Concurrent polling operations
+
+Example usage with static URL:
+
+```
+client := longpoll.NewWithConfig(longpoll.Config{
+	PollTimeout: 60 * time.Second,
+	RetryDelay:  1 * time.Second,
+	MaxRetries: -1, // unlimited
+})
+
+ctx := context.Background()
+err := client.Poll(ctx, "https://api.example.com/events", func(resp *http.Response) (string, bool, error) {
+	var data map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return "", false, err
+	}
+
+	// Process the data...
+	fmt.Printf("Received: %+v\n", data)
+
+	// Return empty string to reuse URL, true to continue polling
+	return "", true, nil
+})
+```
+
+Example with Telegram Bot API \(dynamic URL updates\):
+
+```
+client := longpoll.NewWithConfig(longpoll.Config{
+	PollTimeout: 50 * time.Second, // Telegram max is 50s
+})
+
+botToken := "YOUR_BOT_TOKEN"
+baseURL := fmt.Sprintf("https://api.telegram.org/bot%s/getUpdates", botToken)
+offset := 0
+
+err := client.Poll(ctx, fmt.Sprintf("%s?timeout=50&offset=%d", baseURL, offset),
+	func(resp *http.Response) (string, bool, error) {
+		var result struct {
+			OK     bool `json:"ok"`
+			Result []struct {
+				UpdateID int `json:"update_id"`
+			} `json:"result"`
+		}
+
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			return "", false, err
+		}
+
+		// Process updates...
+		if len(result.Result) > 0 {
+			lastUpdateID := result.Result[len(result.Result)-1].UpdateID
+			offset = lastUpdateID + 1
+		}
+
+		// Return new URL with updated offset
+		nextURL := fmt.Sprintf("%s?timeout=50&offset=%d", baseURL, offset)
+		return nextURL, true, nil
+	})
+```
+
+## Index
+
+- [type Client](<#Client>)
+  - [func New\(\) \*Client](<#New>)
+  - [func NewWithConfig\(cfg Config\) \*Client](<#NewWithConfig>)
+  - [func \(c \*Client\) ActiveCount\(\) int](<#Client.ActiveCount>)
+  - [func \(c \*Client\) Poll\(ctx context.Context, url string, handler ResponseHandler\) error](<#Client.Poll>)
+  - [func \(c \*Client\) PollSimple\(ctx context.Context, url string, handler SimpleResponseHandler\) error](<#Client.PollSimple>)
+  - [func \(c \*Client\) StopAll\(\)](<#Client.StopAll>)
+  - [func \(c \*Client\) WithBodyBuilder\(builder func\(\) \(io.Reader, error\)\) \*Client](<#Client.WithBodyBuilder>)
+  - [func \(c \*Client\) WithHeader\(key, value string\) \*Client](<#Client.WithHeader>)
+  - [func \(c \*Client\) WithHeaders\(headers map\[string\]string\) \*Client](<#Client.WithHeaders>)
+  - [func \(c \*Client\) WithLogger\(logger \*slog.Logger\) \*Client](<#Client.WithLogger>)
+  - [func \(c \*Client\) WithMethod\(method string\) \*Client](<#Client.WithMethod>)
+- [type Config](<#Config>)
+- [type ResponseHandler](<#ResponseHandler>)
+- [type SimpleResponseHandler](<#SimpleResponseHandler>)
+
+
+<a name="Client"></a>
+## type Client
+
+Client is a long polling HTTP client.
+
+```go
+type Client struct {
+    // contains filtered or unexported fields
+}
+```
+
+<a name="New"></a>
+### func New
+
+```go
+func New() *Client
+```
+
+New creates a new long polling client with default settings.
+
+<a name="NewWithConfig"></a>
+### func NewWithConfig
+
+```go
+func NewWithConfig(cfg Config) *Client
+```
+
+NewWithConfig creates a new long polling client with custom configuration.
+
+<a name="Client.ActiveCount"></a>
+### func \(\*Client\) ActiveCount
+
+```go
+func (c *Client) ActiveCount() int
+```
+
+ActiveCount returns the number of active polling operations.
+
+<a name="Client.Poll"></a>
+### func \(\*Client\) Poll
+
+```go
+func (c *Client) Poll(ctx context.Context, url string, handler ResponseHandler) error
+```
+
+Poll starts a long polling loop that continuously polls the given URL. The handler function is called for each response. Polling continues until: \- The context is cancelled \- The handler returns shouldContinue=false \- The handler returns an error \- MaxRetries is exceeded \(if set\)
+
+The handler can return a new URL for the next request, or an empty string to reuse the same URL. This is useful for APIs like Telegram Bot API that require updating parameters \(e.g., offset\) between requests.
+
+This method blocks until polling stops. To poll in the background, call it in a goroutine.
+
+<details><summary>Example</summary>
+<p>
+
+
+
+```go
+// Create a long polling client
+client := NewWithConfig(Config{
+	PollTimeout: 60 * time.Second, // Each poll can take up to 60 seconds
+	RetryDelay:  1 * time.Second,  // Wait 1 second between retries
+	MaxRetries:  -1,               // Unlimited retries
+	Logger:      slog.Default(),
+})
+
+// Start polling
+ctx := context.Background()
+err := client.Poll(ctx, "https://api.example.com/events", func(resp *http.Response) (string, bool, error) {
+	// Process the response
+	var data map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return "", false, err // Stop polling on decode error
+	}
+
+	fmt.Printf("Received: %+v\n", data)
+
+	// Continue polling with the same URL (empty string = reuse URL)
+	return "", true, nil
+})
+
+if err != nil {
+	fmt.Printf("Polling stopped with error: %v\n", err)
+}
+```
+
+</p>
+</details>
+
+<details><summary>Example (Telegram Bot API)</summary>
+<p>
+
+
+
+```go
+// Example: Using longpoll client with Telegram Bot API getUpdates
+client := NewWithConfig(Config{
+	PollTimeout: 50 * time.Second, // Telegram max timeout is 50 seconds
+	RetryDelay:  1 * time.Second,
+	MaxRetries:  -1,
+})
+
+botToken := "YOUR_BOT_TOKEN"
+baseURL := fmt.Sprintf("https://api.telegram.org/bot%s/getUpdates", botToken)
+offset := 0
+
+ctx := context.Background()
+err := client.Poll(ctx, fmt.Sprintf("%s?timeout=50&offset=%d", baseURL, offset),
+	func(resp *http.Response) (string, bool, error) {
+		var result struct {
+			OK     bool `json:"ok"`
+			Result []struct {
+				UpdateID int `json:"update_id"`
+			} `json:"result"`
+		}
+
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			return "", false, err
+		}
+
+		if !result.OK {
+			return "", false, fmt.Errorf("telegram API error")
+		}
+
+		// Process updates
+		for _, update := range result.Result {
+			fmt.Printf("Received update: %d\n", update.UpdateID)
+			// Handle the update...
+		}
+
+		// Update offset for next request
+		if len(result.Result) > 0 {
+			lastUpdateID := result.Result[len(result.Result)-1].UpdateID
+			offset = lastUpdateID + 1
+		}
+
+		// Return new URL with updated offset
+		nextURL := fmt.Sprintf("%s?timeout=50&offset=%d", baseURL, offset)
+		return nextURL, true, nil
+	})
+
+if err != nil {
+	fmt.Printf("Telegram polling error: %v\n", err)
+}
+```
+
+</p>
+</details>
+
+<details><summary>Example (With Context)</summary>
+<p>
+
+
+
+```go
+client := New()
+
+ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+defer cancel()
+
+// Poll with automatic cancellation after 5 minutes
+err := client.Poll(ctx, "https://api.example.com/updates", func(resp *http.Response) (string, bool, error) {
+	// Process response...
+	// Return empty string to reuse URL, false to stop, true to continue
+	return "", true, nil
+})
+
+if err != nil {
+	fmt.Printf("Polling error: %v\n", err)
+}
+```
+
+</p>
+</details>
+
+<a name="Client.PollSimple"></a>
+### func \(\*Client\) PollSimple
+
+```go
+func (c *Client) PollSimple(ctx context.Context, url string, handler SimpleResponseHandler) error
+```
+
+PollSimple is a convenience method that uses a SimpleResponseHandler. The URL remains constant across all requests.
+
+<a name="Client.StopAll"></a>
+### func \(\*Client\) StopAll
+
+```go
+func (c *Client) StopAll()
+```
+
+StopAll stops all active polling operations.
+
+<a name="Client.WithBodyBuilder"></a>
+### func \(\*Client\) WithBodyBuilder
+
+```go
+func (c *Client) WithBodyBuilder(builder func() (io.Reader, error)) *Client
+```
+
+WithBodyBuilder sets a function that builds the request body for each poll.
+
+<a name="Client.WithHeader"></a>
+### func \(\*Client\) WithHeader
+
+```go
+func (c *Client) WithHeader(key, value string) *Client
+```
+
+WithHeader adds a header that will be included in all polling requests.
+
+<a name="Client.WithHeaders"></a>
+### func \(\*Client\) WithHeaders
+
+```go
+func (c *Client) WithHeaders(headers map[string]string) *Client
+```
+
+WithHeaders sets multiple headers for all polling requests.
+
+<a name="Client.WithLogger"></a>
+### func \(\*Client\) WithLogger
+
+```go
+func (c *Client) WithLogger(logger *slog.Logger) *Client
+```
+
+WithLogger sets the logger for the client.
+
+<a name="Client.WithMethod"></a>
+### func \(\*Client\) WithMethod
+
+```go
+func (c *Client) WithMethod(method string) *Client
+```
+
+WithMethod sets the HTTP method for polling requests \(GET, POST, etc.\).
+
+<a name="Config"></a>
+## type Config
+
+Config holds configuration for the long polling client.
+
+```go
+type Config struct {
+    // PollTimeout is the timeout for each individual poll request.
+    // Default: 60 seconds
+    PollTimeout time.Duration
+
+    // RetryDelay is the delay between retries when a request fails.
+    // Default: 1 second
+    RetryDelay time.Duration
+
+    // MaxRetries is the maximum number of consecutive retries before giving up.
+    // Set to -1 for unlimited retries. Default: -1
+    MaxRetries int
+
+    // HTTPClient is the underlying HTTP client to use.
+    // If nil, a default client will be created.
+    HTTPClient *http.Client
+
+    // Logger is an optional logger for debugging.
+    Logger *slog.Logger
+
+    // Headers are additional headers to include in each request.
+    Headers map[string]string
+
+    // Method is the HTTP method to use for requests. Default: GET
+    Method string
+
+    // BodyBuilder returns the request body for each poll.
+    // If nil, no body is sent.
+    BodyBuilder func() (io.Reader, error)
+}
+```
+
+<a name="ResponseHandler"></a>
+## type ResponseHandler
+
+ResponseHandler is a function that processes a long polling response. It receives the HTTP response and should return: \- nextURL: the URL to use for the next request \(empty string to reuse the same URL\) \- shouldContinue: true to continue polling, false to stop \- error: an error to stop polling with an error
+
+This allows handlers to dynamically update request parameters \(e.g., offset for Telegram Bot API\).
+
+```go
+type ResponseHandler func(*http.Response) (nextURL string, shouldContinue bool, err error)
+```
+
+<a name="SimpleResponseHandler"></a>
+## type SimpleResponseHandler
+
+SimpleResponseHandler is a simplified handler that doesn't modify the URL.
+
+```go
+type SimpleResponseHandler func(*http.Response) (bool, error)
+```
+
 # middleware
 
 ```go
