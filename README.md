@@ -270,6 +270,7 @@ Package httperrors provides structured error types and utilities for HTTP servic
   - [func NewAPIErrorWithErr\(code int, message string, err error\) \*APIError](<#NewAPIErrorWithErr>)
   - [func \(e \*APIError\) Error\(\) string](<#APIError.Error>)
   - [func \(e \*APIError\) Unwrap\(\) error](<#APIError.Unwrap>)
+  - [func \(e \*APIError\) WriteJSON\(w http.ResponseWriter\)](<#APIError.WriteJSON>)
 - [type Error](<#Error>)
   - [func NewError\(code int, message string\) \*Error](<#NewError>)
   - [func NewErrorWithDetails\(code int, message, details string\) \*Error](<#NewErrorWithDetails>)
@@ -381,6 +382,15 @@ func (e *APIError) Unwrap() error
 ```
 
 Unwrap returns the underlying error
+
+<a name="APIError.WriteJSON"></a>
+### func \(\*APIError\) WriteJSON
+
+```go
+func (e *APIError) WriteJSON(w http.ResponseWriter)
+```
+
+WriteJSON writes the API error as JSON to the response
 
 <a name="Error"></a>
 ## type Error
@@ -540,16 +550,13 @@ Package httpjson provides common helpers for JSON\-based HTTP services
 
 - [func DecodeJSON\[T any\]\(r \*http.Request, target \*T\) error](<#DecodeJSON>)
 - [func DecodeJSONWithLimit\[T any\]\(r \*http.Request, target \*T, maxSize int64\) error](<#DecodeJSONWithLimit>)
-- [func EncodeJSON\[T any\]\(w http.ResponseWriter, status int, v T\) error](<#EncodeJSON>)
 - [func ParseDateRange\(r \*http.Request\) \(from, to time.Time, err error\)](<#ParseDateRange>)
 - [func SendErrorJSON\(w http.ResponseWriter, r \*http.Request, l \*slog.Logger, code int, err error, msg string\)](<#SendErrorJSON>)
 - [func WriteJSON\(w http.ResponseWriter, data any\)](<#WriteJSON>)
-- [func WriteJSONAllowHTML\(w http.ResponseWriter, r \*http.Request, v any\) error](<#WriteJSONAllowHTML>)
-- [func WriteJSONBytes\(w http.ResponseWriter, r \*http.Request, data \[\]byte\) error](<#WriteJSONBytes>)
+- [func WriteJSONAllowHTML\(w http.ResponseWriter, v any\) error](<#WriteJSONAllowHTML>)
+- [func WriteJSONBytes\(w http.ResponseWriter, data \[\]byte\)](<#WriteJSONBytes>)
+- [func WriteJSONWithStatus\(w http.ResponseWriter, code int, data any\)](<#WriteJSONWithStatus>)
 - [type JSON](<#JSON>)
-- [type Logger](<#Logger>)
-  - [func NewLogger\(l \*slog.Logger\) \*Logger](<#NewLogger>)
-  - [func \(e \*Logger\) Respond\(w http.ResponseWriter, r \*http.Request, httpCode int, err error, msg ...string\)](<#Logger.Respond>)
 
 
 <a name="DecodeJSON"></a>
@@ -570,15 +577,6 @@ func DecodeJSONWithLimit[T any](r *http.Request, target *T, maxSize int64) error
 
 DecodeJSONWithLimit decodes JSON from request body into the given struct with a size limit. This prevents DoS attacks via large JSON payloads.
 
-<a name="EncodeJSON"></a>
-## func EncodeJSON
-
-```go
-func EncodeJSON[T any](w http.ResponseWriter, status int, v T) error
-```
-
-EncodeJSON encodes data as JSON and writes it with status code
-
 <a name="ParseDateRange"></a>
 ## func ParseDateRange
 
@@ -595,7 +593,7 @@ ParseDateRange extracts "from" and "to" query parameters and parses them as time
 func SendErrorJSON(w http.ResponseWriter, r *http.Request, l *slog.Logger, code int, err error, msg string)
 ```
 
-RespondJSON logs the error with slog and sends a JSON error response
+SendErrorJSON logs the error and sends a JSON error response
 
 <a name="WriteJSON"></a>
 ## func WriteJSON
@@ -604,13 +602,13 @@ RespondJSON logs the error with slog and sends a JSON error response
 func WriteJSON(w http.ResponseWriter, data any)
 ```
 
-WriteJSON encodes and writes JSON to the response
+WriteJSON encodes and writes JSON to the response with HTTP 200
 
 <a name="WriteJSONAllowHTML"></a>
 ## func WriteJSONAllowHTML
 
 ```go
-func WriteJSONAllowHTML(w http.ResponseWriter, r *http.Request, v any) error
+func WriteJSONAllowHTML(w http.ResponseWriter, v any) error
 ```
 
 WriteJSONAllowHTML encodes and writes JSON with HTML characters unescaped.
@@ -626,10 +624,19 @@ For most use cases, use WriteJSON instead, which escapes HTML characters by defa
 ## func WriteJSONBytes
 
 ```go
-func WriteJSONBytes(w http.ResponseWriter, r *http.Request, data []byte) error
+func WriteJSONBytes(w http.ResponseWriter, data []byte)
 ```
 
 WriteJSONBytes writes pre\-encoded JSON bytes to the response
+
+<a name="WriteJSONWithStatus"></a>
+## func WriteJSONWithStatus
+
+```go
+func WriteJSONWithStatus(w http.ResponseWriter, code int, data any)
+```
+
+WriteJSONWithStatus encodes and writes JSON with the given HTTP status code
 
 <a name="JSON"></a>
 ## type JSON
@@ -639,35 +646,6 @@ JSON is a convenience alias for a generic JSON object
 ```go
 type JSON map[string]any
 ```
-
-<a name="Logger"></a>
-## type Logger
-
-Logger wraps slog.Logger for error reporting
-
-```go
-type Logger struct {
-    // contains filtered or unexported fields
-}
-```
-
-<a name="NewLogger"></a>
-### func NewLogger
-
-```go
-func NewLogger(l *slog.Logger) *Logger
-```
-
-NewLogger creates a new error logger with slog.Logger
-
-<a name="Logger.Respond"></a>
-### func \(\*Logger\) Respond
-
-```go
-func (e *Logger) Respond(w http.ResponseWriter, r *http.Request, httpCode int, err error, msg ...string)
-```
-
-Respond logs the error and sends a JSON error response
 
 # longpoll
 
@@ -1066,6 +1044,7 @@ import "github.com/en9inerd/go-pkgs/middleware"
 ## Index
 
 - [func GlobalThrottle\(limit int64\) func\(http.Handler\) http.Handler](<#GlobalThrottle>)
+- [func GlobalThrottleWithConfig\(cfg ThrottleConfig\) func\(http.Handler\) http.Handler](<#GlobalThrottleWithConfig>)
 - [func Headers\(headers ...string\) func\(http.Handler\) http.Handler](<#Headers>)
 - [func Health\(next http.Handler\) http.Handler](<#Health>)
 - [func Logger\(logger \*slog.Logger\) func\(http.Handler\) http.Handler](<#Logger>)
@@ -1075,7 +1054,9 @@ import "github.com/en9inerd/go-pkgs/middleware"
 - [func SizeLimit\(size int64\) func\(http.Handler\) http.Handler](<#SizeLimit>)
 - [func StripSlashes\(next http.Handler\) http.Handler](<#StripSlashes>)
 - [func Timeout\(timeout time.Duration\) func\(http.Handler\) http.Handler](<#Timeout>)
+- [func TimeoutWithMessage\(timeout time.Duration, message string\) func\(http.Handler\) http.Handler](<#TimeoutWithMessage>)
 - [type HealthResponse](<#HealthResponse>)
+- [type ThrottleConfig](<#ThrottleConfig>)
 
 
 <a name="GlobalThrottle"></a>
@@ -1086,6 +1067,15 @@ func GlobalThrottle(limit int64) func(http.Handler) http.Handler
 ```
 
 GlobalThrottle returns a middleware that limits the total number of in\-flight requests across all routes in the server.
+
+<a name="GlobalThrottleWithConfig"></a>
+## func GlobalThrottleWithConfig
+
+```go
+func GlobalThrottleWithConfig(cfg ThrottleConfig) func(http.Handler) http.Handler
+```
+
+GlobalThrottleWithConfig returns a throttle middleware with custom configuration.
 
 <a name="Headers"></a>
 ## func Headers
@@ -1188,7 +1178,16 @@ StripSlashes removes trailing slashes from URLs
 func Timeout(timeout time.Duration) func(http.Handler) http.Handler
 ```
 
-Timeout creates a timeout middleware
+Timeout creates a timeout middleware with the default message "Request timeout"
+
+<a name="TimeoutWithMessage"></a>
+## func TimeoutWithMessage
+
+```go
+func TimeoutWithMessage(timeout time.Duration, message string) func(http.Handler) http.Handler
+```
+
+TimeoutWithMessage creates a timeout middleware with a custom message
 
 <a name="HealthResponse"></a>
 ## type HealthResponse
@@ -1198,6 +1197,18 @@ Timeout creates a timeout middleware
 ```go
 type HealthResponse struct {
     Status string `json:"status"`
+}
+```
+
+<a name="ThrottleConfig"></a>
+## type ThrottleConfig
+
+ThrottleConfig holds configuration for the throttle middleware
+
+```go
+type ThrottleConfig struct {
+    Limit   int64
+    Message string
 }
 ```
 
@@ -1517,7 +1528,7 @@ New creates a new root Group bound to the given mux.
 func RootGroup(mux *http.ServeMux, basePath string) *Group
 ```
 
-Mount creates a new group with a base path.
+RootGroup creates a new root Group with a base path bound to the given mux.
 
 <a name="Group.Group"></a>
 ### func \(\*Group\) Group
