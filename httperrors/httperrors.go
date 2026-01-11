@@ -85,6 +85,13 @@ func (e *APIError) Unwrap() error {
 	return e.Err
 }
 
+// WriteJSON writes the API error as JSON to the response
+func (e *APIError) WriteJSON(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(e.Code)
+	json.NewEncoder(w).Encode(e)
+}
+
 // NetworkError represents a network-related error
 type NetworkError struct {
 	Message string `json:"message"`

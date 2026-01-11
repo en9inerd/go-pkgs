@@ -106,8 +106,8 @@ func (fw *FixedWindow) Allow() bool {
 	defer fw.mu.Unlock()
 
 	now := time.Now()
-		if now.Sub(fw.windowStart) >= fw.window {
-			fw.count = 0
+	if now.Sub(fw.windowStart) >= fw.window {
+		fw.count = 0
 		fw.windowStart = now
 	}
 

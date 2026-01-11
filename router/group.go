@@ -32,7 +32,7 @@ func New(mux *http.ServeMux) *Group {
 	return &Group{mux: mux}
 }
 
-// Mount creates a new group with a base path.
+// RootGroup creates a new root Group with a base path bound to the given mux.
 func RootGroup(mux *http.ServeMux, basePath string) *Group {
 	return &Group{mux: mux, basePath: basePath}
 }

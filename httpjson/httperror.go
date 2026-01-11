@@ -10,31 +10,12 @@ import (
 	"strings"
 )
 
-// Logger wraps slog.Logger for error reporting
-type Logger struct {
-	l *slog.Logger
-}
-
-// NewLogger creates a new error logger with slog.Logger
-func NewLogger(l *slog.Logger) *Logger {
-	return &Logger{l: l}
-}
-
-// Respond logs the error and sends a JSON error response
-func (e *Logger) Respond(w http.ResponseWriter, r *http.Request, httpCode int, err error, msg ...string) {
-	m := strings.Join(msg, ". ")
-	if e.l != nil {
-		e.l.Error(errDetails(r, httpCode, err, m))
-	}
-	writeJSONWithStatus(w, JSON{"error": m}, httpCode)
-}
-
-// RespondJSON logs the error with slog and sends a JSON error response
+// SendErrorJSON logs the error and sends a JSON error response
 func SendErrorJSON(w http.ResponseWriter, r *http.Request, l *slog.Logger, code int, err error, msg string) {
 	if l != nil {
 		l.Error(errDetails(r, code, err, msg))
 	}
-	writeJSONWithStatus(w, JSON{"error": msg}, code)
+	WriteJSONWithStatus(w, code, JSON{"error": msg})
 }
 
 func errDetails(r *http.Request, code int, err error, msg string) string {
@@ -61,3 +42,4 @@ func errDetails(r *http.Request, code int, err error, msg string) string {
 	}
 	return fmt.Sprintf("%s - %v - %d - %s - %s%s", msg, err, code, remoteIP, q, srcFileInfo)
 }
+
