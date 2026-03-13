@@ -581,7 +581,7 @@ DecodeJSON decodes JSON from request body into the given struct. The request bod
 func DecodeJSONWithLimit[T any](r *http.Request, target *T, maxSize int64) error
 ```
 
-DecodeJSONWithLimit decodes JSON from request body into the given struct with a size limit. This prevents DoS attacks via large JSON payloads.
+DecodeJSONWithLimit decodes JSON from request body into the given struct with a size limit. This prevents DoS attacks via large JSON payloads. NOTE: ResponseWriter is passed as nil to MaxBytesReader because this function doesn't have access to it. The read still errors on oversized bodies, but the connection won't be flagged for close. Use SizeLimit middleware for that.
 
 <a name="ParseDateRange"></a>
 ## func ParseDateRange
@@ -1049,6 +1049,7 @@ import "github.com/en9inerd/go-pkgs/middleware"
 
 ## Index
 
+- [func CORS\(cfg CORSConfig\) func\(http.Handler\) http.Handler](<#CORS>)
 - [func GlobalThrottle\(limit int64\) func\(http.Handler\) http.Handler](<#GlobalThrottle>)
 - [func GlobalThrottleWithConfig\(cfg ThrottleConfig\) func\(http.Handler\) http.Handler](<#GlobalThrottleWithConfig>)
 - [func Headers\(headers ...string\) func\(http.Handler\) http.Handler](<#Headers>)
@@ -1061,9 +1062,19 @@ import "github.com/en9inerd/go-pkgs/middleware"
 - [func StripSlashes\(next http.Handler\) http.Handler](<#StripSlashes>)
 - [func Timeout\(timeout time.Duration\) func\(http.Handler\) http.Handler](<#Timeout>)
 - [func TimeoutWithMessage\(timeout time.Duration, message string\) func\(http.Handler\) http.Handler](<#TimeoutWithMessage>)
+- [type CORSConfig](<#CORSConfig>)
 - [type HealthResponse](<#HealthResponse>)
 - [type ThrottleConfig](<#ThrottleConfig>)
 
+
+<a name="CORS"></a>
+## func CORS
+
+```go
+func CORS(cfg CORSConfig) func(http.Handler) http.Handler
+```
+
+CORS returns a middleware that handles cross\-origin requests. When cfg.Origin is empty the middleware is a no\-op.
 
 <a name="GlobalThrottle"></a>
 ## func GlobalThrottle
@@ -1108,7 +1119,7 @@ func Health(next http.Handler) http.Handler
 func Logger(logger *slog.Logger) func(http.Handler) http.Handler
 ```
 
-Logger middleware using slog
+Logger middleware logs each request with method, path, client IP, response status code, and duration.
 
 <a name="RealIP"></a>
 ## func RealIP
@@ -1194,6 +1205,40 @@ func TimeoutWithMessage(timeout time.Duration, message string) func(http.Handler
 ```
 
 TimeoutWithMessage creates a timeout middleware with a custom message
+
+<a name="CORSConfig"></a>
+## type CORSConfig
+
+CORSConfig defines the CORS policy applied by the CORS middleware.
+
+```go
+type CORSConfig struct {
+    // Origin is the value for Access-Control-Allow-Origin.
+    // Use "*" to allow any origin. Empty string disables the middleware.
+    Origin string
+
+    // Methods lists the allowed HTTP methods for preflight requests.
+    Methods []string
+
+    // Headers lists the allowed request headers for preflight requests.
+    // Defaults to ["Content-Type"] when empty, because Content-Type
+    // with application/json is not CORS-safelisted and would otherwise
+    // silently block most JSON API requests.
+    Headers []string
+
+    // ExposedHeaders lists response headers the browser is allowed to read.
+    // Empty means no extra headers are exposed.
+    ExposedHeaders []string
+
+    // MaxAge is the preflight cache duration in seconds.
+    // Defaults to 86400 (24 hours) when zero.
+    MaxAge int
+
+    // Credentials sets Access-Control-Allow-Credentials to "true".
+    // Must not be used with Origin "*".
+    Credentials bool
+}
+```
 
 <a name="HealthResponse"></a>
 ## type HealthResponse
