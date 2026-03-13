@@ -29,7 +29,7 @@ func writeResponse(w http.ResponseWriter, data []byte, code int) {
 	if code != 0 {
 		w.WriteHeader(code)
 	}
-	_, _ = w.Write(data)
+	w.Write(data)
 }
 
 // WriteJSON encodes and writes JSON to the response with HTTP 200

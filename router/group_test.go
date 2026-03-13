@@ -13,7 +13,7 @@ import (
 func writeBeforeMiddleware(prefix string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			_, _ = w.Write([]byte(prefix))
+			w.Write([]byte(prefix))
 			next.ServeHTTP(w, r)
 		})
 	}
@@ -27,7 +27,7 @@ func TestMiddlewareOrderAndHandlerExecution(t *testing.T) {
 
 	child := root.With(writeBeforeMiddleware("child;"))
 	child.HandleFunc("/a", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("handler;"))
+		w.Write([]byte("handler;"))
 	}))
 
 	// request must go through root.ServeHTTP to have global middlewares applied
@@ -47,7 +47,7 @@ func TestNotFoundHandlerUsedForTrue404(t *testing.T) {
 	root := New(mux)
 
 	root.NotFoundHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("custom-404"))
+		w.Write([]byte("custom-404"))
 	}))
 
 	// no routes registered -> should invoke custom 404
@@ -91,7 +91,7 @@ func TestHandleRootAndHandleRootFunc(t *testing.T) {
 
 	// test HandleRoot (handler, not Func)
 	root.HandleRoot("", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("root-handler"))
+		w.Write([]byte("root-handler"))
 	}))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -104,7 +104,7 @@ func TestHandleRootAndHandleRootFunc(t *testing.T) {
 	// test HandleRootFunc
 	root2 := New(http.NewServeMux())
 	root2.HandleRootFunc("", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("root-func"))
+		w.Write([]byte("root-func"))
 	})
 	req2 := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec2 := httptest.NewRecorder()
@@ -137,7 +137,7 @@ func TestUsePanicsIfRoutesLocked(t *testing.T) {
 	g := New(mux)
 
 	// Register a route to lock the group
-	g.HandleFunc("/x", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("x")) })
+	g.HandleFunc("/x", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("x")) })
 
 	// subsequent Use should panic
 	defer func() {
@@ -151,20 +151,20 @@ func TestUsePanicsIfRoutesLocked(t *testing.T) {
 func TestWrapHelperOrder(t *testing.T) {
 	// base handler writes "H"
 	base := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("H"))
+		w.Write([]byte("H"))
 	})
 
 	// mw1 writes "A" before next
 	mw1 := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			_, _ = w.Write([]byte("A"))
+			w.Write([]byte("A"))
 			next.ServeHTTP(w, r)
 		})
 	}
 	// mw2 writes "B" before next
 	mw2 := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			_, _ = w.Write([]byte("B"))
+			w.Write([]byte("B"))
 			next.ServeHTTP(w, r)
 		})
 	}
@@ -187,7 +187,7 @@ func TestMountAndGroupBasePathPrefixing(t *testing.T) {
 
 	// mount sub-group at /api
 	api := root.Mount("/api")
-	api.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("pong")) })
+	api.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("pong")) })
 
 	// request "/api/ping"
 	req := httptest.NewRequest(http.MethodGet, "/api/ping", nil)
@@ -201,7 +201,7 @@ func TestMountAndGroupBasePathPrefixing(t *testing.T) {
 func TestHandlerReturnsMuxHandlerAndPattern(t *testing.T) {
 	mux := http.NewServeMux()
 	g := New(mux)
-	g.HandleFunc("/h", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("ok")) })
+	g.HandleFunc("/h", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 
 	req := httptest.NewRequest(http.MethodGet, "/h", nil)
 	h, pat := g.Handler(req)
