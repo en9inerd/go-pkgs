@@ -100,12 +100,10 @@ func TestGlobalThrottle_RejectsOverLimit(t *testing.T) {
 
 	// First request blocks
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, httptest.NewRequest("GET", "/", nil))
-	}()
+	})
 
 	// Give first request time to acquire the slot
 	time.Sleep(20 * time.Millisecond)
@@ -218,7 +216,7 @@ func TestSizeLimit_MaxBytesReaderEnforced(t *testing.T) {
 // --------------- Timeout ---------------
 
 func TestTimeout_CompletesInTime(t *testing.T) {
-	handler := Timeout(1*time.Second)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := Timeout(1 * time.Second)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("ok"))
 	}))
 
@@ -234,7 +232,7 @@ func TestTimeout_CompletesInTime(t *testing.T) {
 }
 
 func TestTimeout_ExceedsDeadline(t *testing.T) {
-	handler := Timeout(10*time.Millisecond)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := Timeout(10 * time.Millisecond)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		select {
 		case <-r.Context().Done():
 		case <-time.After(5 * time.Second):
@@ -555,7 +553,7 @@ func TestStripSlashes_NoTrailingSlash(t *testing.T) {
 // --------------- Timeout (context cancellation) ---------------
 
 func TestTimeout_ContextCancelled(t *testing.T) {
-	handler := Timeout(50*time.Millisecond)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := Timeout(50 * time.Millisecond)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		<-r.Context().Done()
 	}))
 

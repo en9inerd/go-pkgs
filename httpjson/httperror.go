@@ -43,4 +43,3 @@ func errDetails(r *http.Request, code int, err error, msg string) string {
 	}
 	return fmt.Sprintf("%s - %v - %d - %s - %s%s", msg, err, code, remoteIP, q, srcFileInfo)
 }
-

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"net/http"
 	"time"
 )
@@ -89,9 +90,7 @@ func (c *Client) WithHeaders(headers map[string]string) *Client {
 	if c.headers == nil {
 		c.headers = make(map[string]string)
 	}
-	for k, v := range headers {
-		c.headers[k] = v
-	}
+	maps.Copy(c.headers, headers)
 	return c
 }
 

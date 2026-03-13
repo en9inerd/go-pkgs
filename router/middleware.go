@@ -45,10 +45,7 @@ func (g *Group) wrapMiddleware(handler http.Handler) http.Handler {
 	if g.root == nil {
 		return handler
 	}
-	start := g.rootCount
-	if start > len(g.middlewares) {
-		start = len(g.middlewares)
-	}
+	start := min(g.rootCount, len(g.middlewares))
 	for i := len(g.middlewares) - 1; i >= start; i-- {
 		handler = g.middlewares[i](handler)
 	}

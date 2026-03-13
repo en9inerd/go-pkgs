@@ -31,7 +31,7 @@ func TestClient_Poll(t *testing.T) {
 		// Return different responses based on request count
 		if count >= 3 {
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			json.NewEncoder(w).Encode(map[string]any{
 				"message": "done",
 				"count":   count,
 			})
@@ -39,7 +39,7 @@ func TestClient_Poll(t *testing.T) {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		json.NewEncoder(w).Encode(map[string]any{
 			"message": "polling",
 			"count":   count,
 		})
@@ -55,11 +55,11 @@ func TestClient_Poll(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	var responses []map[string]interface{}
+	var responses []map[string]any
 	var muResp sync.Mutex
 
 	err := client.Poll(ctx, server.URL, func(resp *http.Response) (string, bool, error) {
-		var data map[string]interface{}
+		var data map[string]any
 		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 			return "", false, err
 		}
@@ -235,14 +235,12 @@ func TestClient_StopAll(t *testing.T) {
 
 	// Start multiple polling operations
 	var wg sync.WaitGroup
-	for i := 0; i < 3; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 3 {
+		wg.Go(func() {
 			client.Poll(ctx, server.URL, func(resp *http.Response) (string, bool, error) {
 				return "", true, nil
 			})
-		}()
+		})
 	}
 
 	// Give them time to start
@@ -302,9 +300,9 @@ func TestClient_Poll_DynamicURL(t *testing.T) {
 		mu.Unlock()
 
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		json.NewEncoder(w).Encode(map[string]any{
 			"ok": true,
-			"result": []map[string]interface{}{
+			"result": []map[string]any{
 				{"update_id": currentOffset + 1},
 				{"update_id": currentOffset + 2},
 			},
@@ -324,12 +322,12 @@ func TestClient_Poll_DynamicURL(t *testing.T) {
 	updatesReceived := 0
 
 	err := client.Poll(ctx, baseURL+"?offset=0", func(resp *http.Response) (string, bool, error) {
-		var data map[string]interface{}
+		var data map[string]any
 		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 			return "", false, err
 		}
 
-		result, ok := data["result"].([]interface{})
+		result, ok := data["result"].([]any)
 		if !ok {
 			return "", false, fmt.Errorf("invalid response format")
 		}
@@ -338,7 +336,7 @@ func TestClient_Poll_DynamicURL(t *testing.T) {
 
 		// Update offset for next request (like Telegram Bot API)
 		if len(result) > 0 {
-			lastUpdate := result[len(result)-1].(map[string]interface{})
+			lastUpdate := result[len(result)-1].(map[string]any)
 			currentOffset = int(lastUpdate["update_id"].(float64)) + 1
 		}
 
@@ -435,7 +433,7 @@ func ExampleClient_Poll() {
 	client := NewWithConfig(Config{
 		PollTimeout: 60 * time.Second, // Each poll can take up to 60 seconds
 		RetryDelay:  1 * time.Second,  // Wait 1 second between retries
-		MaxRetries:  -1,                // Unlimited retries
+		MaxRetries:  -1,               // Unlimited retries
 		Logger:      slog.Default(),
 	})
 
@@ -443,7 +441,7 @@ func ExampleClient_Poll() {
 	ctx := context.Background()
 	err := client.Poll(ctx, "https://api.example.com/events", func(resp *http.Response) (string, bool, error) {
 		// Process the response
-		var data map[string]interface{}
+		var data map[string]any
 		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 			return "", false, err // Stop polling on decode error
 		}

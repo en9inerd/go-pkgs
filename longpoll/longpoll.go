@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"net/http"
 	"sync"
 	"time"
@@ -299,9 +300,7 @@ func (c *Client) WithHeader(key, value string) *Client {
 func (c *Client) WithHeaders(headers map[string]string) *Client {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	for k, v := range headers {
-		c.headers[k] = v
-	}
+	maps.Copy(c.headers, headers)
 	return c
 }
 

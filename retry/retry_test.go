@@ -25,9 +25,9 @@ func TestDo_RetriesOnError(t *testing.T) {
 	calls := 0
 	err := Do(context.Background(), &Strategy{
 		MaxAttempts:     3,
-		InitialDelay:   1 * time.Millisecond,
+		InitialDelay:    1 * time.Millisecond,
 		MaxDelay:        10 * time.Millisecond,
-		Multiplier:     2.0,
+		Multiplier:      2.0,
 		RetryableErrors: func(error) bool { return true },
 	}, func() error {
 		calls++
@@ -47,9 +47,9 @@ func TestDo_RetriesOnError(t *testing.T) {
 func TestDo_MaxAttemptsReached(t *testing.T) {
 	err := Do(context.Background(), &Strategy{
 		MaxAttempts:     2,
-		InitialDelay:   1 * time.Millisecond,
+		InitialDelay:    1 * time.Millisecond,
 		MaxDelay:        10 * time.Millisecond,
-		Multiplier:     2.0,
+		Multiplier:      2.0,
 		RetryableErrors: func(error) bool { return true },
 	}, func() error {
 		return errors.New("always fail")
@@ -66,10 +66,10 @@ func TestDo_NonRetryableError(t *testing.T) {
 	calls := 0
 	permanent := errors.New("permanent")
 	err := Do(context.Background(), &Strategy{
-		MaxAttempts:     5,
-		InitialDelay:   1 * time.Millisecond,
-		MaxDelay:        10 * time.Millisecond,
-		Multiplier:     2.0,
+		MaxAttempts:  5,
+		InitialDelay: 1 * time.Millisecond,
+		MaxDelay:     10 * time.Millisecond,
+		Multiplier:   2.0,
 		RetryableErrors: func(err error) bool {
 			return !errors.Is(err, permanent)
 		},
@@ -91,9 +91,9 @@ func TestDo_ContextCancelled(t *testing.T) {
 
 	err := Do(ctx, &Strategy{
 		MaxAttempts:     10,
-		InitialDelay:   1 * time.Millisecond,
+		InitialDelay:    1 * time.Millisecond,
 		MaxDelay:        10 * time.Millisecond,
-		Multiplier:     2.0,
+		Multiplier:      2.0,
 		RetryableErrors: func(error) bool { return true },
 	}, func() error {
 		return errors.New("fail")
@@ -120,9 +120,9 @@ func TestDo_NilStrategy(t *testing.T) {
 func TestDoWithResult_Success(t *testing.T) {
 	result, err := DoWithResult(context.Background(), &Strategy{
 		MaxAttempts:     3,
-		InitialDelay:   1 * time.Millisecond,
+		InitialDelay:    1 * time.Millisecond,
 		MaxDelay:        10 * time.Millisecond,
-		Multiplier:     2.0,
+		Multiplier:      2.0,
 		RetryableErrors: func(error) bool { return true },
 	}, func() (string, error) {
 		return "hello", nil
@@ -139,9 +139,9 @@ func TestDoWithResult_RetriesThenSucceeds(t *testing.T) {
 	calls := 0
 	result, err := DoWithResult(context.Background(), &Strategy{
 		MaxAttempts:     3,
-		InitialDelay:   1 * time.Millisecond,
+		InitialDelay:    1 * time.Millisecond,
 		MaxDelay:        10 * time.Millisecond,
-		Multiplier:     2.0,
+		Multiplier:      2.0,
 		RetryableErrors: func(error) bool { return true },
 	}, func() (int, error) {
 		calls++
@@ -161,9 +161,9 @@ func TestDoWithResult_RetriesThenSucceeds(t *testing.T) {
 func TestDoWithResult_MaxAttempts(t *testing.T) {
 	_, err := DoWithResult(context.Background(), &Strategy{
 		MaxAttempts:     2,
-		InitialDelay:   1 * time.Millisecond,
+		InitialDelay:    1 * time.Millisecond,
 		MaxDelay:        10 * time.Millisecond,
-		Multiplier:     2.0,
+		Multiplier:      2.0,
 		RetryableErrors: func(error) bool { return true },
 	}, func() (string, error) {
 		return "", errors.New("always fail")
@@ -179,9 +179,9 @@ func TestDoWithResult_ContextCancelled(t *testing.T) {
 
 	_, err := DoWithResult(ctx, &Strategy{
 		MaxAttempts:     10,
-		InitialDelay:   1 * time.Millisecond,
+		InitialDelay:    1 * time.Millisecond,
 		MaxDelay:        10 * time.Millisecond,
-		Multiplier:     2.0,
+		Multiplier:      2.0,
 		RetryableErrors: func(error) bool { return true },
 	}, func() (int, error) {
 		return 0, errors.New("fail")

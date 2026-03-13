@@ -26,7 +26,7 @@ type captureHandler struct {
 }
 
 func (h *captureHandler) Enabled(_ context.Context, _ slog.Level) bool { return true }
-func (h *captureHandler) WithAttrs(_ []slog.Attr) slog.Handler        { return h }
+func (h *captureHandler) WithAttrs(_ []slog.Attr) slog.Handler         { return h }
 func (h *captureHandler) WithGroup(_ string) slog.Handler              { return h }
 func (h *captureHandler) Handle(_ context.Context, r slog.Record) error {
 	e := logEntry{}
