@@ -815,7 +815,7 @@ client := NewWithConfig(Config{
 ctx := context.Background()
 err := client.Poll(ctx, "https://api.example.com/events", func(resp *http.Response) (string, bool, error) {
 	// Process the response
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		return "", false, err // Stop polling on decode error
 	}
