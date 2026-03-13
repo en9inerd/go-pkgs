@@ -41,7 +41,7 @@ func init() {
 func Get(r *http.Request) (string, error) {
 	var firstValidIP string
 
-	for _, header := range []string{"X-Forwarded-For", "X-Real-Ip"} {
+	for _, header := range []string{"X-Forwarded-For", "X-Real-IP"} {
 		hv := r.Header.Get(header)
 		if hv == "" {
 			continue

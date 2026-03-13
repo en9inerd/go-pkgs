@@ -107,7 +107,7 @@ func ParseDateRange(r *http.Request) (from, to time.Time, err error) {
 // The request body should be limited using SizeLimit middleware or http.MaxBytesReader
 // to prevent DoS attacks via large JSON payloads.
 func DecodeJSON[T any](r *http.Request, target *T) error {
-	if err := json.NewDecoder(r.Body).Decode(&target); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(target); err != nil {
 		return fmt.Errorf("decode json: %w", err)
 	}
 	return nil
@@ -115,9 +115,12 @@ func DecodeJSON[T any](r *http.Request, target *T) error {
 
 // DecodeJSONWithLimit decodes JSON from request body into the given struct with a size limit.
 // This prevents DoS attacks via large JSON payloads.
+// NOTE: ResponseWriter is passed as nil to MaxBytesReader because this function
+// doesn't have access to it. The read still errors on oversized bodies, but the
+// connection won't be flagged for close. Use SizeLimit middleware for that.
 func DecodeJSONWithLimit[T any](r *http.Request, target *T, maxSize int64) error {
 	limitedBody := http.MaxBytesReader(nil, r.Body, maxSize)
-	if err := json.NewDecoder(limitedBody).Decode(&target); err != nil {
+	if err := json.NewDecoder(limitedBody).Decode(target); err != nil {
 		return fmt.Errorf("decode json: %w", err)
 	}
 	return nil

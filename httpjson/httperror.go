@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"runtime"
@@ -34,8 +35,8 @@ func errDetails(r *http.Request, code int, err error, msg string) string {
 	}
 
 	remoteIP := r.RemoteAddr
-	if pos := strings.Index(remoteIP, ":"); pos >= 0 {
-		remoteIP = remoteIP[:pos]
+	if host, _, err := net.SplitHostPort(remoteIP); err == nil {
+		remoteIP = host
 	}
 	if err == nil {
 		err = errors.New("no error")
