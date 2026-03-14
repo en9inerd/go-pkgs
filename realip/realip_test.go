@@ -65,6 +65,8 @@ func TestIsPrivateSubnet(t *testing.T) {
 		{"198.18.0.1", true},
 		{"fc00::1", true},
 		{"fe80::1", true},
+		{"127.0.0.1", true},
+		{"::1", true},
 		{"8.8.8.8", false},
 		{"2001:4860:4860::8888", false},
 	}

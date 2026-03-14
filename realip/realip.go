@@ -25,6 +25,9 @@ func init() {
 		"fc00::/7",
 		// IPv6 Link-local
 		"fe80::/10",
+		// Loopback
+		"127.0.0.0/8",
+		"::1/128",
 	}
 
 	for _, cidr := range cidrs {
@@ -99,8 +102,7 @@ func isPrivateSubnet(ip net.IP) bool {
 	return false
 }
 
-// IsPrivateIP returns true if the IP address is in a private subnet.
-// This is useful for validating that a request came from a trusted proxy.
+// IsPrivateIP returns true if the IP address is loopback or in a private subnet.
 func IsPrivateIP(ip net.IP) bool {
 	return isPrivateSubnet(ip)
 }
