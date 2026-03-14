@@ -1402,7 +1402,7 @@ Get extracts the "real" client IP from the request. It prefers the first public 
 func IsPrivateIP(ip net.IP) bool
 ```
 
-IsPrivateIP returns true if the IP address is in a private subnet. This is useful for validating that a request came from a trusted proxy.
+IsPrivateIP returns true if the IP address is loopback or in a private subnet.
 
 # retry
 
