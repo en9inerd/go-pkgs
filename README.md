@@ -1055,6 +1055,7 @@ import "github.com/en9inerd/go-pkgs/middleware"
 - [func Headers\(headers ...string\) func\(http.Handler\) http.Handler](<#Headers>)
 - [func Health\(next http.Handler\) http.Handler](<#Health>)
 - [func Logger\(logger \*slog.Logger\) func\(http.Handler\) http.Handler](<#Logger>)
+- [func RateLimit\(cfg RateLimitConfig\) func\(http.Handler\) http.Handler](<#RateLimit>)
 - [func RealIP\(h http.Handler\) http.Handler](<#RealIP>)
 - [func RealIPWithTrustedProxies\(trustedProxies \[\]string, h http.Handler\) http.Handler](<#RealIPWithTrustedProxies>)
 - [func Recoverer\(logger \*slog.Logger, includeStack bool\) func\(http.Handler\) http.Handler](<#Recoverer>)
@@ -1064,6 +1065,7 @@ import "github.com/en9inerd/go-pkgs/middleware"
 - [func TimeoutWithMessage\(timeout time.Duration, message string\) func\(http.Handler\) http.Handler](<#TimeoutWithMessage>)
 - [type CORSConfig](<#CORSConfig>)
 - [type HealthResponse](<#HealthResponse>)
+- [type RateLimitConfig](<#RateLimitConfig>)
 - [type ThrottleConfig](<#ThrottleConfig>)
 
 
@@ -1120,6 +1122,15 @@ func Logger(logger *slog.Logger) func(http.Handler) http.Handler
 ```
 
 Logger middleware logs each request with method, path, client IP, response status code, and duration.
+
+<a name="RateLimit"></a>
+## func RateLimit
+
+```go
+func RateLimit(cfg RateLimitConfig) func(http.Handler) http.Handler
+```
+
+RateLimit returns middleware that enforces per\-IP rate limiting using a token bucket algorithm. Each unique client IP gets its own bucket. Stale entries are cleaned up automatically.
 
 <a name="RealIP"></a>
 ## func RealIP
@@ -1248,6 +1259,21 @@ type CORSConfig struct {
 ```go
 type HealthResponse struct {
     Status string `json:"status"`
+}
+```
+
+<a name="RateLimitConfig"></a>
+## type RateLimitConfig
+
+RateLimitConfig configures the per\-IP rate limiting middleware.
+
+```go
+type RateLimitConfig struct {
+    // RPS is the sustained requests per second allowed per IP address.
+    RPS float64
+    // Burst is the maximum number of requests allowed in a burst above the
+    // sustained rate. When zero, defaults to max(1, int(RPS)).
+    Burst int
 }
 ```
 
