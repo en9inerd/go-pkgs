@@ -128,13 +128,14 @@ func NewErrorWithDetails(code int, message, details string) *Error {
 	}
 }
 
-// NewErrorWithErr creates a new HTTP error wrapping an underlying error
+// NewErrorWithErr creates a new HTTP error wrapping an underlying error.
+// The wrapped error is available via Unwrap for errors.Is/As but is NOT
+// exposed in the JSON response. Use NewErrorWithDetails to set user-visible details.
 func NewErrorWithErr(code int, message string, err error) *Error {
 	return &Error{
 		Code:    code,
 		Message: message,
 		Err:     err,
-		Details: err.Error(),
 	}
 }
 
@@ -163,13 +164,14 @@ func NewAPIErrorWithDetails(code int, message, details string) *APIError {
 	}
 }
 
-// NewAPIErrorWithErr creates a new API error wrapping an underlying error
+// NewAPIErrorWithErr creates a new API error wrapping an underlying error.
+// The wrapped error is available via Unwrap for errors.Is/As but is NOT
+// exposed in the JSON response. Use NewAPIErrorWithDetails to set user-visible details.
 func NewAPIErrorWithErr(code int, message string, err error) *APIError {
 	return &APIError{
 		Code:    code,
 		Message: message,
 		Err:     err,
-		Details: err.Error(),
 	}
 }
 

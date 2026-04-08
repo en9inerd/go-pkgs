@@ -36,7 +36,12 @@ type CORSConfig struct {
 
 // CORS returns a middleware that handles cross-origin requests.
 // When cfg.Origin is empty the middleware is a no-op.
+// Panics if Credentials is true and Origin is "*" (forbidden by Fetch Standard).
 func CORS(cfg CORSConfig) func(http.Handler) http.Handler {
+	if cfg.Origin == "*" && cfg.Credentials {
+		panic("cors: Credentials cannot be true when Origin is \"*\"")
+	}
+
 	if cfg.Origin == "" {
 		return func(next http.Handler) http.Handler { return next }
 	}
@@ -71,7 +76,7 @@ func CORS(cfg CORSConfig) func(http.Handler) http.Handler {
 				w.Header().Set("Access-Control-Expose-Headers", exposed)
 			}
 
-			if r.Method == http.MethodOptions {
+			if r.Method == http.MethodOptions && r.Header.Get("Access-Control-Request-Method") != "" {
 				if methods != "" {
 					w.Header().Set("Access-Control-Allow-Methods", methods)
 				}

@@ -32,6 +32,7 @@ func TestCORS_PreflightNoMethodsOrHeaders(t *testing.T) {
 
 	handler := CORS(CORSConfig{Origin: "https://example.com"})(inner)
 	req := httptest.NewRequest(http.MethodOptions, "/api", nil)
+	req.Header.Set("Access-Control-Request-Method", "POST")
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -64,6 +65,7 @@ func TestCORS_PreflightCustom(t *testing.T) {
 	})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 
 	req := httptest.NewRequest(http.MethodOptions, "/", nil)
+	req.Header.Set("Access-Control-Request-Method", "PUT")
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -177,4 +179,30 @@ func TestCORS_NoExposedHeadersByDefault(t *testing.T) {
 	if got := rec.Header().Get("Access-Control-Expose-Headers"); got != "" {
 		t.Errorf("Expose-Headers should be empty, got %q", got)
 	}
+}
+
+func TestCORS_NonPreflightOptionsPassesThrough(t *testing.T) {
+	called := false
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	})
+
+	handler := CORS(CORSConfig{Origin: "https://example.com"})(inner)
+	req := httptest.NewRequest(http.MethodOptions, "/api", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if !called {
+		t.Error("non-preflight OPTIONS should pass through to inner handler")
+	}
+}
+
+func TestCORS_CredentialsWithWildcardOriginPanics(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("expected panic for Credentials=true with Origin=\"*\"")
+		}
+	}()
+	CORS(CORSConfig{Origin: "*", Credentials: true})
 }

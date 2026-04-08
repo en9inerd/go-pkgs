@@ -104,6 +104,7 @@ func TestClient_Poll_ContextCancellation(t *testing.T) {
 	client := NewWithConfig(Config{
 		PollTimeout: 5 * time.Second,
 		RetryDelay:  100 * time.Millisecond,
+		MaxRetries:  -1,
 	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
@@ -216,6 +217,35 @@ func TestClient_Poll_MaxRetries(t *testing.T) {
 
 	if err == nil {
 		t.Error("Expected error after max retries")
+	}
+}
+
+func TestClient_Poll_MaxRetriesZero(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	client := NewWithConfig(Config{
+		PollTimeout: 100 * time.Millisecond,
+		RetryDelay:  50 * time.Millisecond,
+		MaxRetries:  0, // no retries -- fail immediately
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	err := client.Poll(ctx, server.URL, func(resp *http.Response) (string, bool, error) {
+		return "", true, nil
+	})
+
+	elapsed := time.Since(start)
+	if err == nil {
+		t.Error("expected error with MaxRetries=0")
+	}
+	if elapsed > 500*time.Millisecond {
+		t.Errorf("took %v, expected immediate failure with MaxRetries=0", elapsed)
 	}
 }
 

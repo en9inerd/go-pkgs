@@ -34,7 +34,8 @@ type Config struct {
 	RetryDelay time.Duration
 
 	// MaxRetries is the maximum number of consecutive retries before giving up.
-	// Set to -1 for unlimited retries. Default: -1
+	// Set to -1 for unlimited retries, 0 for no retries.
+	// When using New(), defaults to -1 (unlimited).
 	MaxRetries int
 
 	// HTTPClient is the underlying HTTP client to use.
@@ -61,7 +62,7 @@ type Client struct {
 	httpClient *http.Client
 	logger     *slog.Logger
 	headers    map[string]string
-	mu         sync.RWMutex
+	mu         sync.Mutex
 	active     map[*pollContext]struct{}
 }
 
@@ -73,7 +74,7 @@ type pollContext struct {
 
 // New creates a new long polling client with default settings.
 func New() *Client {
-	return NewWithConfig(Config{})
+	return NewWithConfig(Config{MaxRetries: -1})
 }
 
 // NewWithConfig creates a new long polling client with custom configuration.
@@ -83,9 +84,6 @@ func NewWithConfig(cfg Config) *Client {
 	}
 	if cfg.RetryDelay == 0 {
 		cfg.RetryDelay = 1 * time.Second
-	}
-	if cfg.MaxRetries == 0 {
-		cfg.MaxRetries = -1 // unlimited by default
 	}
 	if cfg.Method == "" {
 		cfg.Method = http.MethodGet
@@ -245,11 +243,9 @@ func (c *Client) makeRequest(ctx context.Context, url string) (*http.Response, e
 	}
 
 	// Set headers
-	c.mu.RLock()
 	for k, v := range c.headers {
 		req.Header.Set(k, v)
 	}
-	c.mu.RUnlock()
 
 	if bodyReader != nil && method == http.MethodPost {
 		if req.Header.Get("Content-Type") == "" {
@@ -283,47 +279,37 @@ func (c *Client) StopAll() {
 
 // ActiveCount returns the number of active polling operations.
 func (c *Client) ActiveCount() int {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	return len(c.active)
 }
 
 // WithHeader adds a header that will be included in all polling requests.
 func (c *Client) WithHeader(key, value string) *Client {
-	c.mu.Lock()
-	defer c.mu.Unlock()
 	c.headers[key] = value
 	return c
 }
 
 // WithHeaders sets multiple headers for all polling requests.
 func (c *Client) WithHeaders(headers map[string]string) *Client {
-	c.mu.Lock()
-	defer c.mu.Unlock()
 	maps.Copy(c.headers, headers)
 	return c
 }
 
 // WithLogger sets the logger for the client.
 func (c *Client) WithLogger(logger *slog.Logger) *Client {
-	c.mu.Lock()
-	defer c.mu.Unlock()
 	c.logger = logger
 	return c
 }
 
 // WithMethod sets the HTTP method for polling requests (GET, POST, etc.).
 func (c *Client) WithMethod(method string) *Client {
-	c.mu.Lock()
-	defer c.mu.Unlock()
 	c.config.Method = method
 	return c
 }
 
 // WithBodyBuilder sets a function that builds the request body for each poll.
 func (c *Client) WithBodyBuilder(builder func() (io.Reader, error)) *Client {
-	c.mu.Lock()
-	defer c.mu.Unlock()
 	c.config.BodyBuilder = builder
 	return c
 }

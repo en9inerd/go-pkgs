@@ -76,6 +76,33 @@ func TestRecoverer_ErrAbortHandler(t *testing.T) {
 	}
 }
 
+func TestRecoverer_PanicAfterWrite(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	handler := Recoverer(logger, false)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("partial"))
+		panic("oops after write")
+	}))
+
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, httptest.NewRequest("GET", "/", nil))
+
+	// Should NOT append error text when headers already sent
+	body := w.Body.String()
+	if strings.Contains(body, "Internal Server Error") {
+		t.Error("recoverer should not write error after headers already sent")
+	}
+	if body != "partial" {
+		t.Errorf("body = %q, want %q", body, "partial")
+	}
+}
+
+func TestLogger_StatusWriterUnwrap(t *testing.T) {
+	sw := &statusWriter{ResponseWriter: httptest.NewRecorder(), status: http.StatusOK}
+	if sw.Unwrap() == nil {
+		t.Error("Unwrap() should return the underlying ResponseWriter")
+	}
+}
+
 // --------------- GlobalThrottle ---------------
 
 func TestGlobalThrottle_AllowsUnderLimit(t *testing.T) {

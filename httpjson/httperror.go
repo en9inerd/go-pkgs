@@ -29,8 +29,9 @@ func errDetails(r *http.Request, code int, err error, msg string) string {
 	if pc, file, line, ok := runtime.Caller(2); ok {
 		fnameElems := strings.Split(file, "/")
 		funcNameElems := strings.Split(runtime.FuncForPC(pc).Name(), "/")
+		start := max(len(fnameElems)-3, 0)
 		srcFileInfo = fmt.Sprintf(" [caused by %s:%d %s]",
-			strings.Join(fnameElems[len(fnameElems)-3:], "/"),
+			strings.Join(fnameElems[start:], "/"),
 			line, funcNameElems[len(funcNameElems)-1])
 	}
 

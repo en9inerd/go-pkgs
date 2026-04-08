@@ -17,6 +17,10 @@ func (w *statusWriter) WriteHeader(status int) {
 	w.ResponseWriter.WriteHeader(status)
 }
 
+func (w *statusWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
+}
+
 // Logger middleware logs each request with method, path, client IP,
 // response status code, and duration.
 func Logger(logger *slog.Logger) func(http.Handler) http.Handler {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -37,8 +38,8 @@ func TestNewErrorWithErr(t *testing.T) {
 	if !errors.Is(e, inner) {
 		t.Error("Unwrap should return inner error")
 	}
-	if e.Details != "connection refused" {
-		t.Errorf("Details = %q", e.Details)
+	if e.Details != "" {
+		t.Errorf("Details should be empty (not leak internal error), got %q", e.Details)
 	}
 }
 
@@ -201,6 +202,30 @@ func TestIsNetworkError(t *testing.T) {
 	}
 	if IsNetworkError(errors.New("plain")) {
 		t.Error("expected IsNetworkError to return false")
+	}
+}
+
+func TestNewErrorWithErr_NoDetailsLeak(t *testing.T) {
+	inner := errors.New("pq: connection to 10.0.1.5:5432 refused")
+	e := NewErrorWithErr(500, "internal error", inner)
+
+	w := httptest.NewRecorder()
+	e.WriteJSON(w)
+
+	body := w.Body.String()
+	if strings.Contains(body, "10.0.1.5") {
+		t.Errorf("internal error details leaked to JSON: %s", body)
+	}
+}
+
+func TestNewAPIErrorWithErr_NoDetailsLeak(t *testing.T) {
+	inner := errors.New("redis: connection refused")
+	e := NewAPIErrorWithErr(502, "bad gateway", inner)
+	if e.Details != "" {
+		t.Errorf("Details should be empty, got %q", e.Details)
+	}
+	if !errors.Is(e, inner) {
+		t.Error("Unwrap should return inner error")
 	}
 }
 

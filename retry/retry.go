@@ -65,15 +65,13 @@ func Do(ctx context.Context, strategy *Strategy, fn func() error) error {
 
 		// Don't sleep after the last attempt
 		if attempt < strategy.MaxAttempts-1 {
-			calculatedDelay := calculateDelay(delay, strategy)
-
 			// Wait with context cancellation support
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case <-time.After(calculatedDelay):
-				delay = calculatedDelay
+			case <-time.After(delay):
 			}
+			delay = calculateDelay(delay, strategy)
 		}
 	}
 
@@ -121,14 +119,12 @@ func DoWithResult[T any](ctx context.Context, strategy *Strategy, fn func() (T, 
 		}
 
 		if attempt < strategy.MaxAttempts-1 {
-			calculatedDelay := calculateDelay(delay, strategy)
-
 			select {
 			case <-ctx.Done():
 				return zero, ctx.Err()
-			case <-time.After(calculatedDelay):
-				delay = calculatedDelay
+			case <-time.After(delay):
 			}
+			delay = calculateDelay(delay, strategy)
 		}
 	}
 

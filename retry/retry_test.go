@@ -225,6 +225,40 @@ func TestIsRetryableError(t *testing.T) {
 	}
 }
 
+func TestDo_FirstDelayIsInitialDelay(t *testing.T) {
+	calls := 0
+	var timestamps []time.Time
+
+	Do(context.Background(), &Strategy{
+		MaxAttempts:     3,
+		InitialDelay:    100 * time.Millisecond,
+		MaxDelay:        10 * time.Second,
+		Multiplier:      2.0,
+		Jitter:          false,
+		RetryableErrors: func(error) bool { return true },
+	}, func() error {
+		timestamps = append(timestamps, time.Now())
+		calls++
+		return errors.New("fail")
+	})
+
+	if len(timestamps) < 3 {
+		t.Fatalf("expected 3 timestamps, got %d", len(timestamps))
+	}
+
+	// First delay should be ~100ms (InitialDelay), not ~200ms (InitialDelay * Multiplier)
+	firstDelay := timestamps[1].Sub(timestamps[0])
+	if firstDelay < 80*time.Millisecond || firstDelay > 150*time.Millisecond {
+		t.Errorf("first delay = %v, want ~100ms (InitialDelay)", firstDelay)
+	}
+
+	// Second delay should be ~200ms (InitialDelay * Multiplier)
+	secondDelay := timestamps[2].Sub(timestamps[1])
+	if secondDelay < 160*time.Millisecond || secondDelay > 300*time.Millisecond {
+		t.Errorf("second delay = %v, want ~200ms (InitialDelay * Multiplier)", secondDelay)
+	}
+}
+
 func TestDefaultStrategy(t *testing.T) {
 	s := DefaultStrategy()
 	if s.MaxAttempts != 3 {

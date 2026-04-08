@@ -61,12 +61,13 @@ func (tb *TokenBucket) Allow() bool {
 // Wait blocks until a token is available or context is cancelled
 func (tb *TokenBucket) Wait(ctx context.Context) error {
 	for {
-		if tb.Allow() {
-			return nil
-		}
-
 		tb.mu.Lock()
 		tb.refill()
+		if tb.tokens >= 1.0 {
+			tb.tokens -= 1.0
+			tb.mu.Unlock()
+			return nil
+		}
 		needed := 1.0 - tb.tokens
 		waitTime := time.Duration(needed/tb.refillRate) * time.Second
 		tb.mu.Unlock()
@@ -75,7 +76,6 @@ func (tb *TokenBucket) Wait(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-time.After(waitTime):
-			// Continue loop to try again
 		}
 	}
 }

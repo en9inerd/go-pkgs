@@ -322,6 +322,23 @@ func TestWrapGlobalAppliesRootMiddlewares(t *testing.T) {
 	}
 }
 
+func TestHandle_MethodPrefixWithTrailingSlash(t *testing.T) {
+	mux := http.NewServeMux()
+	root := RootGroup(mux, "/api")
+
+	root.Handle("GET /foo/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("ok"))
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/foo/bar", nil)
+	rec := httptest.NewRecorder()
+	root.ServeHTTP(rec, req)
+
+	if rec.Body.String() != "ok" {
+		t.Errorf("expected ok, got %q (status %d)", rec.Body.String(), rec.Code)
+	}
+}
+
 func TestStatusRecorder(t *testing.T) {
 	rec := &statusRecorder{}
 	if rec.Header() == nil {

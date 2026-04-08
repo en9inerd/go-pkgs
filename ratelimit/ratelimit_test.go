@@ -157,3 +157,4 @@ func TestTokenBucket_ImplementsLimiter(t *testing.T) {
 func TestFixedWindow_ImplementsLimiter(t *testing.T) {
 	var _ Limiter = NewFixedWindow(1, time.Second)
 }
+

@@ -2,20 +2,22 @@ package router
 
 import (
 	"net/http"
-	"regexp"
 	"strings"
 )
-
-// matches "METHOD /path"
-var reGo122 = regexp.MustCompile(`^(\S+)\s+(.+)$`)
 
 // Handle registers a route with middlewares applied.
 func (g *Group) Handle(pattern string, handler http.Handler) {
 	g.lockRoot()
 
 	if strings.HasSuffix(pattern, "/") {
-		full := g.basePath + pattern
-		g.mux.Handle(full, g.wrapMiddleware(handler))
+		method, path, ok := strings.Cut(pattern, " ")
+		if ok {
+			full := method + " " + g.basePath + path
+			g.mux.Handle(full, g.wrapMiddleware(handler))
+		} else {
+			full := g.basePath + pattern
+			g.mux.Handle(full, g.wrapMiddleware(handler))
+		}
 		return
 	}
 	g.register(pattern, handler.ServeHTTP)
@@ -77,11 +79,10 @@ func (g *Group) Handler(r *http.Request) (h http.Handler, pattern string) {
 
 func (g *Group) register(pattern string, handler http.HandlerFunc) {
 	g.lockRoot()
-	matches := reGo122.FindStringSubmatch(pattern)
 
 	var path, method string
-	if len(matches) > 2 {
-		method, path = matches[1], matches[2]
+	if m, p, ok := strings.Cut(pattern, " "); ok {
+		method, path = m, p
 		pattern = method + " " + g.basePath + path
 	} else {
 		path = pattern
