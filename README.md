@@ -369,7 +369,7 @@ NewAPIErrorWithDetails creates a new API error with details
 func NewAPIErrorWithErr(code int, message string, err error) *APIError
 ```
 
-NewAPIErrorWithErr creates a new API error wrapping an underlying error
+NewAPIErrorWithErr creates a new API error wrapping an underlying error. The wrapped error is available via Unwrap for errors.Is/As but is NOT exposed in the JSON response. Use NewAPIErrorWithDetails to set user\-visible details.
 
 <a name="APIError.Error"></a>
 ### func \(\*APIError\) Error
@@ -437,7 +437,7 @@ NewErrorWithDetails creates a new HTTP error with details
 func NewErrorWithErr(code int, message string, err error) *Error
 ```
 
-NewErrorWithErr creates a new HTTP error wrapping an underlying error
+NewErrorWithErr creates a new HTTP error wrapping an underlying error. The wrapped error is available via Unwrap for errors.Is/As but is NOT exposed in the JSON response. Use NewErrorWithDetails to set user\-visible details.
 
 <a name="Error.Error"></a>
 ### func \(\*Error\) Error
@@ -999,7 +999,8 @@ type Config struct {
     RetryDelay time.Duration
 
     // MaxRetries is the maximum number of consecutive retries before giving up.
-    // Set to -1 for unlimited retries. Default: -1
+    // Set to -1 for unlimited retries, 0 for no retries.
+    // When using New(), defaults to -1 (unlimited).
     MaxRetries int
 
     // HTTPClient is the underlying HTTP client to use.
@@ -1076,7 +1077,7 @@ import "github.com/en9inerd/go-pkgs/middleware"
 func CORS(cfg CORSConfig) func(http.Handler) http.Handler
 ```
 
-CORS returns a middleware that handles cross\-origin requests. When cfg.Origin is empty the middleware is a no\-op.
+CORS returns a middleware that handles cross\-origin requests. When cfg.Origin is empty the middleware is a no\-op. Panics if Credentials is true and Origin is "\*" \(forbidden by Fetch Standard\).
 
 <a name="GlobalThrottle"></a>
 ## func GlobalThrottle
