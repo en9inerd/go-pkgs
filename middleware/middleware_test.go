@@ -496,7 +496,7 @@ func TestRealIPWithTrustedProxies_Untrusted(t *testing.T) {
 	req.Header.Set("X-Forwarded-For", "203.0.113.50")
 	handler.ServeHTTP(httptest.NewRecorder(), req)
 
-	// Untrusted proxy — header should be ignored
+	// Untrusted proxy - header should be ignored
 	if gotAddr != "192.0.2.1:1234" {
 		t.Errorf("RemoteAddr = %q, want %q (untouched)", gotAddr, "192.0.2.1:1234")
 	}
@@ -595,7 +595,6 @@ func TestTimeout_ContextCancelled(t *testing.T) {
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 
-	// Either 503 from timeout or context cancelled — both are acceptable
 	if w.Code != http.StatusServiceUnavailable && w.Code != http.StatusOK {
 		t.Errorf("status = %d", w.Code)
 	}
