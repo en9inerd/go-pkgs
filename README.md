@@ -1396,6 +1396,40 @@ type ThrottleConfig struct {
 }
 ```
 
+# promptio
+
+```go
+import "github.com/en9inerd/go-pkgs/promptio"
+```
+
+Package promptio provides context\-aware interactive terminal input.
+
+Stdin reads are not cancellable, so helpers run the read in a goroutine and return early on ctx cancellation; the goroutine leaks until process exit.
+
+## Index
+
+- [func ReadLine\(ctx context.Context, msg string\) \(string, error\)](<#ReadLine>)
+- [func ReadPassword\(ctx context.Context, msg string\) \(string, error\)](<#ReadPassword>)
+
+
+<a name="ReadLine"></a>
+## func ReadLine
+
+```go
+func ReadLine(ctx context.Context, msg string) (string, error)
+```
+
+
+
+<a name="ReadPassword"></a>
+## func ReadPassword
+
+```go
+func ReadPassword(ctx context.Context, msg string) (string, error)
+```
+
+
+
 # ratelimit
 
 ```go
